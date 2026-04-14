@@ -1,86 +1,111 @@
-# Developer Evaluation Project
+# Ambev Developer Evaluation - Sales API 🚀
 
-`READ CAREFULLY`
+Welcome to the **DeveloperStore Sales API** project! This repository contains a robust, highly decoupled, and event-driven RESTful API responsible for handling sales records, strictly following Domain-Driven Design (DDD) principles and Clean Architecture.
 
-## Instructions
-**The test below will have up to 7 calendar days to be delivered from the date of receipt of this manual.**
+## 🌟 Technical Highlights & Differentiators
 
-- The code must be versioned in a public Github repository and a link must be sent for evaluation once completed
-- Upload this template to your repository and start working from it
-- Read the instructions carefully and make sure all requirements are being addressed
-- The repository must provide instructions on how to configure, execute and test the project
-- Documentation and overall organization will also be taken into consideration
+This test explicitly mentioned that implementing a Message Broker wasn't mandatory, but as a technical differentiator, this project elevates the architecture by integrating **RabbitMQ via MassTransit**:
 
-## Use Case
-**You are a developer on the DeveloperStore team. Now we need to implement the API prototypes.**
+*   **Architecture**: .NET 8, Clean Architecture, CQRS (MediatR), and Repository Pattern.
+*   **Domain-Driven Design (DDD)**: Business rules and discount logic are natively encapsulated within the rich Domain Entities.
+*   **Message Broker**: Fully functional Event-Driven Architecture. `SaleRegisteredEvent`, `SaleModifiedEvent`, and `SaleCancelledEvent` are successfully pushed asynchronously to **RabbitMQ** via MassTransit.
+*   **Validation**: Implementation of **FluentValidation** on both the Application Request layer and Domain Models.
+*   **Database**: **PostgreSQL** configured via Entity Framework Core with automatic migrations.
+*   **Quality Assurance**: Comprehensive **Unit Tests** suite verifying both Business Rules and CQRS commands (100% Passing).
 
-As we work with `DDD`, to reference entities from other domains, we use the `External Identities` pattern with denormalization of entity descriptions.
+---
 
-Therefore, you will write an API (complete CRUD) that handles sales records. The API needs to be able to inform:
+## 🛠️ Prerequisites
 
-* Sale number
-* Date when the sale was made
-* Customer
-* Total sale amount
-* Branch where the sale was made
-* Products
-* Quantities
-* Unit prices
-* Discounts
-* Total amount for each item
-* Cancelled/Not Cancelled
+To run this application locally, you will need:
+- [.NET 8.0 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Required to run the PostgreSQL and RabbitMQ containers)
+- Any REST Client or Web Browser for the Swagger UI.
 
-It's not mandatory, but it would be a differential to build code for publishing events of:
-* SaleCreated
-* SaleModified
-* SaleCancelled
-* ItemCancelled
+---
 
-If you write the code, **it's not required** to actually publish to any Message Broker. You can log a message in the application log or however you find most convenient.
+## 🚀 How to Run the Application
 
-### Business Rules
+Follow this step-by-step guide to bring up the environment and test the API.
 
-* Purchases above 4 identical items have a 10% discount
-* Purchases between 10 and 20 identical items have a 20% discount
-* It's not possible to sell above 20 identical items
-* Purchases below 4 items cannot have a discount
+### 1. Start the Infrastructure (Docker)
+The `docker-compose.yml` file is configured to spin up both the **PostgreSQL** database and the **RabbitMQ** management server.
+Open your terminal in the `template/backend/` directory and run:
 
-These business rules define quantity-based discounting tiers and limitations:
+```bash
+cd template/backend
+docker-compose up -d
+```
 
-1. Discount Tiers:
-   - 4+ items: 10% discount
-   - 10-20 items: 20% discount
+### 2. Run the Application
+The Entity Framework is configured with Auto-Migrations, so the database tables will be generated instantly on startup.
+Still inside the `template/backend` folder, navigate to the WebApi layer and spin up the project:
 
-2. Restrictions:
-   - Maximum limit: 20 items per product
-   - No discounts allowed for quantities below 4 items
+```bash
+cd src/Ambev.DeveloperEvaluation.WebApi
+dotnet run
+```
 
-## Overview
-This section provides a high-level overview of the project and the various skills and competencies it aims to assess for developer candidates. 
+### 3. Access the API
+Once the application confirms it's listening to `http://localhost:5119`, open your browser:
+👉 **Swagger UI:** [http://localhost:5119/swagger/index.html](http://localhost:5119/swagger/index.html)
 
-See [Overview](/.doc/overview.md)
+---
 
-## Tech Stack
-This section lists the key technologies used in the project, including the backend, testing, frontend, and database components. 
+## 🧪 Validating the Business Rules & Event Messages
 
-See [Tech Stack](/.doc/tech-stack.md)
+### 🐇 Visualizing the RabbitMQ Events (Differentiator)
+You can visually inspect the events generated by the API flowing through the Message Broker:
 
-## Frameworks
-This section outlines the frameworks and libraries that are leveraged in the project to enhance development productivity and maintainability. 
+1. Access the **RabbitMQ Dashboard**: [http://localhost:15672](http://localhost:15672) *(User: `developer` | Pass: `ev@luAt10n`)*.
+2. Go to the **Exchanges** tab. You'll see exchanges like `Ambev.DeveloperEvaluation.Application.Sales....Events:SaleRegisteredEvent`.
+3. To "read" the message payload, create a queue (e.g. `minha-fila-teste`) in the **Queues** tab, link/bind it to the Event's Exchange in the **Bindings** section.
+4. Execute a `POST` or `PUT` or `DELETE` on the Sales API via Swagger.
+5. Go back to your Queue and click **"Get Messages"** to see the organic JSON that the API pushed asynchronously to the architecture!
 
-See [Frameworks](/.doc/frameworks.md)
+### 🛒 Testing the API (Business Requirements)
 
-<!-- 
-## API Structure
-This section includes links to the detailed documentation for the different API resources:
-- [API General](./docs/general-api.md)
-- [Products API](/.doc/products-api.md)
-- [Carts API](/.doc/carts-api.md)
-- [Users API](/.doc/users-api.md)
-- [Auth API](/.doc/auth-api.md)
--->
+Use the provided Swagger UI to perform the **CRUD** operations. Here is a valid payload example for `POST /api/Sales` that exercises the complex business rules natively:
 
-## Project Structure
-This section describes the overall structure and organization of the project files and directories. 
+```json
+{
+  "saleNumber": "VENDA-0001",
+  "saleDate": "2026-04-13T10:00:00Z",
+  "customerId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "customerName": "Cliente Empresa X",
+  "branchId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "branchName": "Filial SP",
+  "items": [
+    {
+      "productId": "8f8b80fc-5b3f-42e7-9d7e-22bcb6bf6a00",
+      "productName": "Produto (NO DISCOUNT)",
+      "quantity": 2,
+      "unitPrice": 10.00
+    },
+    {
+      "productId": "2a34fc3e-9cf4-4b55-a224-bbcdce767b2d",
+      "productName": "Produto (10% DISCOUNT)",
+      "quantity": 5,
+      "unitPrice": 20.00
+    },
+    {
+      "productId": "73c6838a-1a86-4f4b-8e2b-f6be62ba4a77",
+      "productName": "Produto (20% DISCOUNT)",
+      "quantity": 20,
+      "unitPrice": 8.00
+    }
+  ]
+}
+```
+*Note: If you attempt to send an item with `quantity: 21`, the Domain layer structure will return a `400 Bad Request`, validating the specific domain rule constraint.*
 
-See [Project Structure](/.doc/project-structure.md)
+---
+
+## 🏃 Running the Unit Tests
+The domain boundaries, validation rules, and behaviors are extensively covered by unit tests.
+To run the automated test suite, execute the following from the `template/backend` repository root:
+
+```bash
+dotnet test tests/Ambev.DeveloperEvaluation.Unit/Ambev.DeveloperEvaluation.Unit.csproj
+```
+*Expect to see all unit tests reporting Success status.*

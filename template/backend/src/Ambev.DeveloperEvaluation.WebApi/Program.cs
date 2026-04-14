@@ -1,4 +1,5 @@
 using Ambev.DeveloperEvaluation.Application;
+using MassTransit;
 using Ambev.DeveloperEvaluation.Common.HealthChecks;
 using Ambev.DeveloperEvaluation.Common.Logging;
 using Ambev.DeveloperEvaluation.Common.Security;
@@ -24,6 +25,20 @@ public class Program
             builder.AddDefaultLogging();
 
             builder.Services.AddControllers();
+
+            builder.Services.AddMassTransit(x =>
+            {
+                x.UsingRabbitMq((context, cfg) =>
+                {
+                    cfg.Host("localhost", "/", h =>
+                    {
+                        h.Username("developer");
+                        h.Password("ev@luAt10n");
+                    });
+
+                    cfg.ConfigureEndpoints(context);
+                });
+            });
             builder.Services.AddEndpointsApiExplorer();
 
             builder.AddBasicHealthChecks();
@@ -52,6 +67,8 @@ public class Program
 
             builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
+
+
             var app = builder.Build();
             app.UseMiddleware<ValidationExceptionMiddleware>();
 
@@ -74,6 +91,7 @@ public class Program
         }
         catch (Exception ex)
         {
+            Console.WriteLine(ex.ToString());
             Log.Fatal(ex, "Application terminated unexpectedly");
         }
         finally
