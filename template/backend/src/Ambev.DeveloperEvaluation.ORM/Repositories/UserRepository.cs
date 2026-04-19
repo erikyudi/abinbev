@@ -1,4 +1,4 @@
-﻿using Ambev.DeveloperEvaluation.Domain.Entities;
+using Ambev.DeveloperEvaluation.Domain.Entities;
 using Ambev.DeveloperEvaluation.Domain.Repositories;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,14 +10,16 @@ namespace Ambev.DeveloperEvaluation.ORM.Repositories;
 public class UserRepository : IUserRepository
 {
     private readonly DefaultContext _context;
+    private readonly Ambev.DeveloperEvaluation.WebApi.Common.RedisCacheService _cache;
 
     /// <summary>
     /// Initializes a new instance of UserRepository
     /// </summary>
     /// <param name="context">The database context</param>
-    public UserRepository(DefaultContext context)
+    public UserRepository(DefaultContext context, Ambev.DeveloperEvaluation.WebApi.Common.RedisCacheService cache)
     {
         _context = context;
+        _cache = cache;
     }
 
     /// <summary>
@@ -52,8 +54,21 @@ public class UserRepository : IUserRepository
     /// <returns>The user if found, null otherwise</returns>
     public async Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
-        return await _context.Users
+        var cacheKey = $"user:email:{email}";
+        // 1. Tenta buscar do cache
+        var cachedUser = await _cache.GetAsync<User>(cacheKey);
+        if (cachedUser != null)
+            return cachedUser;
+
+        // 2. Se não estiver no cache, busca do banco
+        var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
+
+        // 3. Salva no cache pra próxima vez ser instantâneo
+        if (user != null)
+            await _cache.SetAsync(cacheKey, user, TimeSpan.FromMinutes(10));
+
+        return user;
     }
 
     /// <summary>
