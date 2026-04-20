@@ -6,6 +6,10 @@ using Ambev.DeveloperEvaluation.Common.Security;
 using Ambev.DeveloperEvaluation.Common.Validation;
 using Ambev.DeveloperEvaluation.IoC;
 using Ambev.DeveloperEvaluation.ORM;
+using StackExchange.Redis;
+using OpenTelemetry.Trace;
+using OpenTelemetry.Metrics;
+
 using Ambev.DeveloperEvaluation.WebApi.Middleware;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -57,8 +61,29 @@ public class Program
 
             builder.Services.AddAutoMapper(typeof(Program).Assembly, typeof(ApplicationLayer).Assembly);
 
+            // =======================================
+            // Observability/Tracing - OpenTelemetry
+            // =======================================
+            // Esta seção ativa a instrumentação automática de requests HTTP, chamadas HTTP client, Entity Framework Core e Redis.
+            // Todos os eventos/traces são exportados para o console (localmente), permitindo "ver" fluxos de requisições e dependências.
+            //
+            // Você pode depois trocar/exportar para outros destinos (Jaeger, Zipkin, Grafana, Azure Application Insights), mas o Console é ótimo para testes e didática.
+            builder.Services.AddOpenTelemetry()
+                .WithTracing(builder => builder
+                    // Instrumentação automática de requisições nas APIs ASP.NET Core
+                    .AddAspNetCoreInstrumentation()
+                    // Instrumentação automática de chamadas HTTP (HttpClient)
+                    .AddHttpClientInstrumentation()
+                    // Instrumentação automática de banco de dados (Entity Framework Core)
+                    // .AddEntityFrameworkCoreInstrumentation() // descomentar ao instalar OpenTelemetry.Instrumentation.EntityFrameworkCore
+                    // Instrumentação StackExchange.Redis (instrumentação nativa precisa do pacote, aqui só exemplificando)
+                    // .AddRedisInstrumentation() // descomentar se/ao instalar pacote OpenTelemetry.Instrumentation.StackExchangeRedis
+                    // Exportador simples de spans para o console
+                    .AddConsoleExporter()
+                );
+            // =======================================
+
 // Redis registration
-using StackExchange.Redis;
 var redisConfig = builder.Configuration.GetSection("Redis:ConnectionString").Value;
 builder.Services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConfig));
 builder.Services.AddSingleton<Ambev.DeveloperEvaluation.WebApi.Common.RedisCacheService>();

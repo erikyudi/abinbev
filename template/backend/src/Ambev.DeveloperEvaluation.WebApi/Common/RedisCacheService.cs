@@ -20,7 +20,10 @@ namespace Ambev.DeveloperEvaluation.WebApi.Common
         public async Task SetAsync<T>(string key, T value, TimeSpan? expiry = null)
         {
             var serialized = JsonSerializer.Serialize(value);
-            await _cache.StringSetAsync(key, serialized, expiry);
+            if (expiry.HasValue)
+    await _cache.StringSetAsync(key, serialized, expiry.Value);
+else
+    await _cache.StringSetAsync(key, serialized);
         }
 
         public async Task<T?> GetAsync<T>(string key)
